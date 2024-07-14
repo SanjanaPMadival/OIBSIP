@@ -1,0 +1,137 @@
+import datetime
+import speech_recognition as sr
+import pyaudio
+import wikipedia
+import pyttsx3
+import webbrowser
+import os
+import time
+import subprocess
+import requests
+
+
+# Initialize the text-to-speech engine (pyttsx3)
+engine = pyttsx3.init('sapi5')
+voices = engine.getProperty('voices')
+engine.setProperty('voice', voices[1].id)
+
+
+# Function to speak out the given audio
+def speak(audio):
+    engine.say(audio)
+    engine.runAndWait()
+
+# It takes microphone input from the user and returns string output
+def takeCommand():
+    r=sr.Recognizer()
+    with sr.Microphone() as source:
+        print('Listening...')
+        r.pause_threshold = 1
+        audio=r.listen(source)
+
+    try:
+        print('Recognizing...')
+        query=r.recognize_google(audio,language='en-in')
+        print(f"User said: {query}\n")
+
+        # Check if the user wants to exit the assistant
+        if 'exit' in query.lower() or 'stop' in query.lower():
+            return 'exit'
+
+    except Exception as e:
+        print("Say that again please...")
+        return "None"
+    return query
+
+
+
+# Function to execute various commands based on user input
+def execute_command(command):
+    if 'open browser' in command:
+        chrome_path = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
+        subprocess.Popen([chrome_path])
+    elif 'open notepad' in command:
+        subprocess.Popen(['notepad.exe'])
+    elif 'shutdown' in command:
+        subprocess.Popen(['shutdown', '/s'])
+    else:
+        return "Sorry, I can't execute that command."
+
+
+
+# Function to fetch weather information using OpenWeatherMap API
+def get_weather(city):
+    api_key = "839d8b75db994d0742955e29a6492882"  # Replace with your actual API key
+    base_url = "https://api.openweathermap.org/data/2.5/weather"
+    complete_url = base_url + "?q=" + city + "&appid=" + api_key + "&units=metric"
+
+    response = requests.get(complete_url)
+    data = response.json()
+
+    if data.get("cod") != "404":
+        main = data.get("main", {})
+        weather = data.get("weather", [{}])[0]
+        temperature = main.get("temp", "N/A")
+        description = weather.get("description", "N/A")
+        return f"The weather in {city} is currently {description} with a temperature of {temperature} degrees Celsius."
+    else:
+        return "Sorry, I couldn't find the weather information for that city."
+
+
+
+# Function to greet the user based on the time of the day
+def wishMe():
+    hour=int(datetime.datetime.now().hour)
+    if hour>=0 and hour<12:
+        speak('Good Morning!')
+
+    elif hour>=12 and hour<18:
+        speak('Good Afternoon!')
+
+    else:
+        speak('Good Evening!')
+
+    speak("I am Evie Mam,Please tell me how may I help you")
+
+
+# Main function to run the voice assistant
+if __name__ == '__main__':
+    wishMe()
+    while True:
+        query=takeCommand().lower()
+
+
+        # Logic for executing tasks based on user query
+        if 'wikipedia' in query:
+            speak('Searching Wikipedia')
+            query=query.replace('wikipedia','')
+            results=wikipedia.summary(query,sentences=2)
+            speak("According to Wikipedia")
+            print(results)
+            speak(results)
+
+        elif 'open youtube' in query:
+            webbrowser.open('youtube.com')
+
+        elif 'open google' in query:
+            webbrowser.open('google.com')
+
+        elif 'open stackoverflow' in query:
+            webbrowser.open('stackoverflow.com')
+
+        elif 'the time' in query:
+            strTime = datetime.datetime.now().strftime("%H:%M:%S")
+            speak(f"Mam, the time is {strTime}")
+
+        elif 'open' in query:
+            execute_command(query)
+
+        elif 'weather' in query:
+            speak("Sure! Which city's weather would you like to know?")
+            city = takeCommand()
+            weather_info = get_weather(city)
+            speak(weather_info)
+
+        elif 'exit' in query:
+            speak("Goodbye!")
+            break
